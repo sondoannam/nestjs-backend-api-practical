@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Upload Large Files</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.9.0/axios.min.js"></script>
+    <style>
+        #uploadStatus {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        #imagePreview {
+            margin-top: 20px;
+            max-width: 100%;
+        }
+
+        #imagePreview img {
+            max-width: 500px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 5px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Upload Large Files</h1>
+    <div class="upload-container">
+        <input type="file" id="fileInput" accept="image/*" multiple onchange="uploadFile(event)" />
+        <p><small>Select a file to start uploading automatically</small></p>
+    </div>
+    <div id="uploadStatus"></div>
+    <div id="imagePreview"></div>
+
+    <script>
+        const inputFile = document.querySelector('#fileInput');
+        const chunkSize = 512 * 1024; // 512KB
+        const uploadApi = 'http://localhost:3000/user/upload/large-file';
+        const mergeApi = 'http://localhost:3000/user/merge-file';
+        const statusElement = document.getElementById('uploadStatus');
+        const imagePreview = document.getElementById('imagePreview');
+
+        async function uploadFile(event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+
+            if (inputFile.files.length === 0) {
+                alert('Please select a file to upload.');
+                return;
+            }
+
+            statusElement.textContent = 'Uploading...';
+            imagePreview.innerHTML = '';
+
+            const file = inputFile.files[0], chunks = [];
+            let startPos = 0;
+
+            while (startPos < file.size) {
+                chunks.push(file.slice(startPos, startPos + chunkSize));
+                startPos += chunkSize;
+            }
+
+            if (!chunks.length) {
+                statusElement.textContent = 'No chunks to upload';
+                return;
+            }
+
+            const randomId = Math.random().toString().slice(2, 15);
+            const fileName = randomId + '-' + file.name;
+
+            try {
+                await Promise.all(chunks.map(async (chunk, index) => {
+                    const formData = new FormData();
+
+                    formData.set('name', fileName + `.part${index}`);
+                    formData.append('files', chunk);
+
+                    await axios.post(uploadApi, formData);
+                    statusElement.textContent = `Uploaded chunk ${index + 1}/${chunks.length}`;
+                }));
+
+                statusElement.textContent = 'All chunks uploaded. Merging...';
+                const res = await axios.get(mergeApi + `?file=chunks-${fileName}`);
+
+                statusElement.textContent = 'Upload complete!';
+
+                if (res.data && res.data.link) {
+                    const imageUrl = res.data.link;
+                    imagePreview.innerHTML = `<h3>Uploaded Image:</h3><img src="${imageUrl}" alt="Uploaded image">`;
+                } else {
+                    statusElement.textContent = 'Error: No image link received from server';
+                }
+            } catch (error) {
+                statusElement.textContent = `Error: ${error.message}`;
+                console.error('Upload error:', error);
+            }
+        }
+    </script>
+</body>
+
+</html>

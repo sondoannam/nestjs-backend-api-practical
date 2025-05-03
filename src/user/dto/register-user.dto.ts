@@ -1,0 +1,19 @@
+import { IsNotEmpty, MinLength } from 'class-validator';
+
+export class RegisterUserDto {
+  @IsNotEmpty({
+    message: 'Username is required',
+  })
+  username: string;
+
+  @IsNotEmpty({
+    message: 'Password is required',
+  })
+  @MinLength(8, {
+    message: 'Password must be at least 8 characters long',
+  })
+  password: string;
+  //   email: string;
+  //   firstName: string;
+  //   lastName: string;
+}

@@ -22,9 +22,11 @@ import { storage } from './oss';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Response } from 'express';
+import { MyLogger } from 'src/logger/my.logger';
 
 @Controller('user')
 export class UserController {
+  private readonly logger = new MyLogger();
   constructor(private readonly userService: UserService) {}
 
   @Post('new')
